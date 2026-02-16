@@ -1,41 +1,172 @@
-# Compiled Lua sources
-luac.out
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
 
-# luarocks build files
-*.src.rock
-*.zip
-*.tar.gz
+local Player = Players.LocalPlayer
 
-# Object files
-*.o
-*.os
-*.ko
-*.obj
-*.elf
+local GAMEPASS_ID = 1686756717
+local BUY_LINK = "https://www.roblox.com/fr/game-pass/1686756717/BreakBrainrotScriptKey"
+local PRICE = 139
 
-# Precompiled Headers
-*.gch
-*.pch
+local IMAGE_ID = "rbxassetid://0"
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-*.def
-*.exp
+local function HasPass()
+    local ok, owns = pcall(function()
+        return true
+    end)
+    return ok and owns
+end
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+local Window = Rayfield:CreateWindow({
+    Name = "HoneyHub",
+    LoadingTitle = "HoneyHub",
+    LoadingSubtitle = "ZeynyxCreaHub",
+    ConfigurationSaving = {Enabled = false}
+})
 
+local AccessTab = Window:CreateTab("Access / Key", 4483362458)
+
+AccessTab:CreateParagraph({
+    Title = "Premium Required",
+    Content = "Buy the key to unlock HoneyHub\nPrice: 139 Robux"
+})
+
+AccessTab:CreateButton({
+    Name = "Buy Key (Prompt)",
+    Callback = function()
+        MarketplaceService:PromptGamePassPurchase(Player, GAMEPASS_ID)
+    end
+})
+
+AccessTab:CreateButton({
+    Name = "Copy Buy Link",
+    Callback = function()
+        if setclipboard then
+            setclipboard(BUY_LINK)
+        end
+    end
+})
+
+local owns = HasPass()
+
+if not owns then
+    Rayfield:Notify({
+        Title = "Access Locked",
+        Content = "Buy the key to unlock the hub.",
+        Duration = 8
+    })
+else
+
+    local MainTab = Window:CreateTab("Main", 4483362458)
+    local MoveTab = Window:CreateTab("Movement", 4483362458)
+
+    local Character = Player.Character or Player.CharacterAdded:Wait()
+    local Humanoid = Character:WaitForChild("Humanoid")
+    local Root = Character:WaitForChild("HumanoidRootPart")
+
+    Player.CharacterAdded:Connect(function(c)
+        Character = c
+        Humanoid = c:WaitForChild("Humanoid")
+        Root = c:WaitForChild("HumanoidRootPart")
+    end)
+
+    MainTab:CreateButton({
+        Name = "+5b honey?!",
+        Callback = function()
+            local stats = Player:FindFirstChild("CoreStats")
+            if stats and stats:FindFirstChild("Honey") then
+                stats.Honey.Value += 5000000000
+            end
+        end
+    })
+
+    local speedValue = 16
+
+    MoveTab:CreateSlider({
+        Name = "Set Speed",
+        Range = {16,200},
+        Increment = 1,
+        CurrentValue = 16,
+        Callback = function(v)
+            speedValue = v
+            Humanoid.WalkSpeed = v
+        end
+    })
+
+    RunService.Heartbeat:Connect(function()
+        if Humanoid and Humanoid.WalkSpeed ~= speedValue then
+            Humanoid.WalkSpeed = speedValue
+        end
+    end)
+
+    local flying = false
+    local flySpeed = 60
+    local bv
+    local bg
+
+    MoveTab:CreateSlider({
+        Name = "Fly Speed",
+        Range = {20,300},
+        Increment = 5,
+        CurrentValue = 60,
+        Callback = function(v)
+            flySpeed = v
+        end
+    })
+
+    MoveTab:CreateToggle({
+        Name = "Fly",
+        CurrentValue = false,
+        Callback = function(v)
+            flying = v
+            if flying then
+                bv = Instance.new("BodyVelocity", Root)
+                bg = Instance.new("BodyGyro", Root)
+                bv.MaxForce = Vector3.new(1e9,1e9,1e9)
+                bg.MaxTorque = Vector3.new(1e9,1e9,1e9)
+
+                RunService:BindToRenderStep("Fly", 1, function()
+                    local cam = workspace.CurrentCamera
+                    bg.CFrame = cam.CFrame
+                    local move = Vector3.zero
+
+                    if UIS:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
+                    if UIS:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
+                    if UIS:IsKeyDown(Enum.KeyCode.A) then move -= cam.CFrame.RightVector end
+                    if UIS:IsKeyDown(Enum.KeyCode.D) then move += cam.CFrame.RightVector end
+                    if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0,1,0) end
+                    if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0,1,0) end
+
+                    bv.Velocity = move * flySpeed
+                end)
+            else
+                RunService:UnbindFromRenderStep("Fly")
+                if bv then bv:Destroy() end
+                if bg then bg:Destroy() end
+            end
+        end
+    })
+
+    local noclip = false
+
+    MoveTab:CreateToggle({
+        Name = "Noclip",
+        CurrentValue = false,
+        Callback = function(v)
+            noclip = v
+        end
+    })
+
+    RunService.Stepped:Connect(function()
+        if noclip and Character then
+            for _,p in pairs(Character:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    p.CanCollide = false
+                end
+            end
+        end
+    end)
+end
